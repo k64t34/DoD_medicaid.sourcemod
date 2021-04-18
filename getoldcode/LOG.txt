@@ -1,0 +1,4 @@
+https://sm.alliedmods.net/new-api/functions/SetNativeArray
+
+oldplugin 
+https://forums.alliedmods.net/showthread.php?t=77172&page=14

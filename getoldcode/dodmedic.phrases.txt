@@ -1,0 +1,35 @@
+"Phrases"
+{
+	"Roger"
+	{
+		"en"  		"Roger that...Medic coming!"
+    }
+    "YourMedic"
+    {
+        "en"  		"Your medic has"
+    }
+    "HealthKit"
+    {
+        "en"  		"Health Kit left"
+    }
+    "HealthKits"
+    {
+        "en"  		"Health Kits left"
+    }
+    "NoHealthKits"
+    {
+        "en"  		"Your medic has no Health Kits left"
+    }
+    "QueryHealth"
+    {
+        "en"  		"HP? You don't need a medic! Get up on your feet, soldier! Get back in there and fight!"
+    }
+    "Yell"
+    {
+        "en"  		"Quit your yelling - I'll be there in a minute"
+    }
+    "RaiseDead"
+    {
+        "en"  		"Medics can't raise the dead, you know"
+    }
+}
