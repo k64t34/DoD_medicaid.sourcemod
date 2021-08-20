@@ -6,7 +6,11 @@
 #include "k64t"//#include <sourcemod> 
 // Global Var
 //int MedicUsed[MAX_PLAYERS+1][2];
-int HealthProcess[MAX_PLAYERS+1];
+
+#define HEALTH 0
+#define MEDKIT 1
+#define CURE   2
+int HealthProcess[MAX_PLAYERS+1][3];
 int MinHealth,MaxHealth;
 public Plugin myinfo =
 {
@@ -27,8 +31,11 @@ LogMessage("OnPluginStart");
 //RegConsoleCmd("say",		Command_Say);
 //RegConsoleCmd("say_team", 	Command_Say);
 RegConsoleCmd("medic",		Command_medic);
-HookEvent("player_death", Event_PlayerDeath);
-HookEvent("player_spawn", Event_PlayerSpawn);
+HookEvent("player_death",	Event_PlayerDeath);
+HookEvent("player_spawn",	Event_PlayerSpawn);
+HookEvent("player_hurt",	Event_PlayerHurt);
+HookEvent("player_team",	Event_PlayerDeath);
+HookEvent("player_disconnect",	Event_PlayerDeath);
 #if defined DEBUG
 RegConsoleCmd("antimedic",Command_degradate_health);
 #endif
@@ -49,7 +56,12 @@ cvarMaxHealth	= CreateConVar( "medicaid_MaxHealth", "50");
 AutoExecConfig(true, PLUGIN_NAME);
 MinHealth=GetConVarInt(cvarMinHealth);
 MaxHealth=GetConVarInt(cvarMaxHealth);
-for (int i=1;i<=MAX_PLAYERS;i++)HealthProcess[i]=0;
+for (int i=1;i<=MAX_PLAYERS;i++)
+	{	
+	HealthProcess[i][HEALTH]=0;
+	HealthProcess[i][MEDKIT]=0;
+	HealthProcess[i][CURE]=0;
+	}
 }
 #if defined DEBUG		
 //*************************
@@ -70,34 +82,70 @@ if(client == 0)return Plugin_Handled;
 int intBuff=GetClientTeam(client);
 if (!(intBuff==DOD_TEAM_ALLIES || intBuff==DOD_TEAM_AXIS))return Plugin_Handled;
 if(!IsPlayerAlive(client)) return Plugin_Handled;
+if (HealthProcess[client][MEDKIT]==0)return Plugin_Handled;
 intBuff=GetClientHealth(client);
 if (intBuff>=MinHealth)return Plugin_Handled;
-SetClientScreenFade( client, 255, 0, 0, 192, 1000 );
-HealthProcess[client]=intBuff++;
+//SetClientScreenFade( client, 255, 0, 0, 192, 1000 );
+ScreenFade(client,255,0,0,192,1000,FFADE_OUT);
+HealthProcess[client][HEALTH]=intBuff++;
+#if !defined DEBUG	
+HealthProcess[client][MEDKIT]--;
+#endif 
+HealthProcess[client][CURE]=1;
 CreateTimer(1.0,Cure,client,TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+SetEntityMoveType(client, MOVETYPE_NONE);
 return Plugin_Handled;
 }
 //*************************	
 public  Action Cure(Handle timer, int client){
 //*************************	
-if (HealthProcess[client]==0)return Plugin_Stop;
-SetClientHealth(client,HealthProcess[client]);
-HealthProcess[client]++;
-if (HealthProcess[client]>=MaxHealth){HealthProcess[client]=0;return Plugin_Stop;}
+if (HealthProcess[client][HEALTH]==0)return Plugin_Stop;
+if (HealthProcess[client][CURE]==1)
+	{
+	ScreenFade(client,255,0,0,192,1000,FFADE_IN);
+	HealthProcess[client][CURE]=0;
+	SetEntityMoveType(client, MOVETYPE_WALK);
+	}
+SetClientHealth(client,HealthProcess[client][HEALTH]);
+HealthProcess[client][HEALTH]+=2;
+if (HealthProcess[client][HEALTH]>=MaxHealth)
+	{
+	HealthProcess[client][HEALTH]=0;
+	ScreenFade(client,0,255,0,8,100,FFADE_IN);
+	//SetClientScreenFade( client, 0, 255, 0, 8, 500 );	
+	return Plugin_Stop;
+	}
 return Plugin_Continue;
 }
 
-public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast){
-	#if defined DEBUG
-	DebugPrint("Event_PlayerDeath %d",GetClientOfUserId(event.GetInt("userid")));
-	#endif 	
-	HealthProcess[GetClientOfUserId(event.GetInt("userid"))]=0;
-	}
 public void Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast){
 	#if defined DEBUG
 	DebugPrint("Event_PlayerSpawn");
 	#endif 	
-	HealthProcess[GetClientOfUserId(event.GetInt("userid"))]=0;}
+	int client=GetClientOfUserId(event.GetInt("userid"));
+	HealthProcess[client][HEALTH]=0;
+	HealthProcess[client][MEDKIT]=1;
+	HealthProcess[client][CURE]=0;	
+	}
+public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast){
+	#if defined DEBUG
+	DebugPrint("Event_PlayerDeath %d",GetClientOfUserId(event.GetInt("userid")));
+	#endif 	
+	HealthProcess[GetClientOfUserId(event.GetInt("userid"))][HEALTH]=0;
+	}
+	
+public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast){
+	#if defined DEBUG
+	DebugPrint("Event_PlayerHurt %d",GetClientOfUserId(event.GetInt("userid")));
+	#endif 	
+	int client=GetClientOfUserId(event.GetInt("userid"));
+	if (HealthProcess[client][HEALTH]!=0)
+		{
+		HealthProcess[client][HEALTH]=0;
+		ScreenFade(client,0,255,255,192,50,FFADE_IN,50);
+		}
+	}	
+	
 
 #if defined DEBUG	
 public Action Command_degradate_health(int client,int args){
@@ -108,88 +156,6 @@ SetClientHealth(client,GetRandomInt(1,MinHealth-1));
 #endinput
 //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-#include "k64t"
-
-Handle cvarUsageMySelf = INVALID_HANDLE;
-//new gUsageMySelf;
-Handle cvarUsageTM = INVALID_HANDLE;
-//new gUsageTM;
-
-#define MYSELF 0
-#define TM 1
-Handle HealProcessTimer[MAX_PLAYERS+1] = INVALID_HANDLE;
-
-public Plugin myinfo =
-{
-    name = PLUGIN_NAME,
-    author = "k64t@ya.ru",
-    description = "Plugin allows to heal yourself and teammate",
-    version = PLUGIN_VERSION,
-    url = ""
-};
-//***********************************************
-void OnPluginStart(){
-//***********************************************
-#if defined DEBUG
-DebugPrint("OnPluginStart");
-#endif 
-LoadTranslations("dod_medicaid.phrases");
-//HookEvents
-HookEvent("player_death", EventPlayerDeath);
-HookEvent("player_spawn", Event_PlayerSpawn );
-
-RegConsoleCmd("healmyself", HealMySelf,"");
-RegConsoleCmd("healyou", healyou,"");
-
-cvarMinHealth = CreateConVar( "medicaid_minhealth", "33" );
-
-}
-
-//***********************************************
-void EventPlayerDeath(Handle:event,const String:name[],bool:dontBroadcast){}
-//*****************************************************************************
-public  Action:HealMySelf(client, args){
-//*****************************************************************************
-if( !IsPlayerAlive( client ) )
-	{		
-	PrintToChat( client, "[%s] You can't receive medicaid while you are dead!",gPLUGIN_NAME );		
-	return Plugin_Handled;
-	}
-new tmpInt;
-tmpInt=GetConVarInt(cvarUsageMySelf);
-if (MedicUsed[client][MYSELF]>=tmpInt)
-	{
-	PrintToChat( client, "[%s] You can receive medicaid înly %d time(s)", gPLUGIN_NAME,tmpInt);
-	return Plugin_Handled;
-	}	
-tmpInt = GetConVarInt( cvarMinHealth );	
-if( GetClientHealth( client ) >= tmpInt )
-	{
-	PrintToChat( client, "[%s] Your health must be lower than '%d' to use medicaid!",gPLUGIN_NAME,tmpInt );		
-	return Plugin_Handled;	
-	}
-MedicUsed[client][MYSELF]++;
-PrintToChat( client, "[%s] Successfully use medicaid.",gPLUGIN_NAME );
-SetClientHealth( client, GetConVarInt( cvarMaxHealth ) );
-SetClientScreenFade( client, 255, 0, 0, 60, 1 );
-	
-return Plugin_Continue;
-}
-//*****************************************************************************
-public  Action:healyou(client, args){
-//*****************************************************************************
-MedicUsed[client][TM]++;
-return Plugin_Handled;
-}
-
-
-//*****************************************************************************
-public Action:Event_PlayerSpawn( Handle:event, const String:name[], bool:dontBroadcast ){
-//*****************************************************************************
-//new id = GetClientOfUserId( GetEventInt( event, "userid" ) );
-MedicUsed[GetClientOfUserId( GetEventInt( event, "userid" ) )][MYSELF] = 0;
-MedicUsed[GetClientOfUserId( GetEventInt( event, "userid" ) )][TM] = 0;
-}
 
 
 
