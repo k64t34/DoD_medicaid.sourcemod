@@ -7,6 +7,8 @@
 // Global Var
 //int MedicUsed[MAX_PLAYERS+1][2];
 
+//TODO: Medkit park https://github.com/zadroot/DoD_Dropmanager/blob/master/addons/sourcemod/scripting/dropmanager/healthkit.sp
+
 #define HEALTH 0
 #define MEDKIT 1
 #define CURE   2 // 4-(start action) MOVETYPE_NONE; 3-MOVETYPE_WALK, vector down; 2 - drag; 1- Cure; 0 - finish
