@@ -1,9 +1,9 @@
-//#C:\pro\SourceMod\MySMcompile.exe "$(FULL_CURRENT_PATH)"
-#define DEBUG 
+//#c:\Users\skorik\Repository\sourcemod-1.10.0-git6502-windows\addons\sourcemod\scripting\SMcompiler.exe   "$(FULL_CURRENT_PATH)"
+#define nDEBUG 
 #define LOG 
 #define PLUGIN_AUTHOR "Kom64t"
 #define PLUGIN_NAME  "DoDs_medicaid"
-#define PLUGIN_VERSION "1.1"
+#define PLUGIN_VERSION "2023.1.2 "
 #define SND_SPRINT "player\\sprint.wav" 
 #define GAME_DOD
 #include "k64t"//#include <sourcemod> 
@@ -16,13 +16,13 @@
 #define MEDKIT 1 // Количество аптечек. По умолчанию одна.
 #define CURE   2 // Этапы лечение с 4 по 0: 4-(start action) MOVETYPE_NONE; 3-MOVETYPE_WALK, vector down; 2 - drag; 1- Cure; 0 - finish
 
-int HealthProcess[MAX_PLAYERS+1][4];
+int HealthProcess[MAX_PLAYERS+1][4]; //Этапы лечения для каждого клиента сервера
 #define MAXdragAngle 10.0
-float g_maxDragAngle=MAXdragAngle;
-float g_minDragAngle=-MAXdragAngle;
+float g_maxDragAngle=MAXdragAngle; // Максимальный угол поворота взгляда при лечении
+float g_minDragAngle=-MAXdragAngle;// Минимальный  угол поворота взгляда при лечении
 #define dpDRIFT 0 
 #define dpSTEP 1 
-float DriftProcess[MAX_PLAYERS+1][2]; // Угол поворота взгляда при лечении
+float DriftProcess[MAX_PLAYERS+1][2]; // Текущий угол поворота взгляда клиента при лечении
 
 char g_snd_SPRINT[] = SND_SPRINT;
 
@@ -64,8 +64,7 @@ public void OnMapStart(){
 #if defined DEBUG	
 DebugPrint("OnMapStart");
 LogMessage("OnMapStart");
-#endif 
-
+#endif
 // ConVar
 Handle cvarMinHealth = INVALID_HANDLE;
 Handle cvarMaxHealth = INVALID_HANDLE;
@@ -74,12 +73,7 @@ cvarMaxHealth	= CreateConVar( "medicaid_MaxHealth", "60");
 AutoExecConfig(true, PLUGIN_NAME);
 MinHealth=GetConVarInt(cvarMinHealth);
 MaxHealth=GetConVarInt(cvarMaxHealth);
-for (int i=1;i<=MaxClients;i++)
-	{	
-//	HealthProcess[i][HEALTH]=0;
-//	HealthProcess[i][MEDKIT]=0;
-	HealthProcess[i][CURE]=0;	
-	}
+for (int i=1;i<=MaxClients;i++){		HealthProcess[i][CURE]=0;		}
 PrecacheSound(g_snd_SPRINT,true);	
 }
 #if defined DEBUG		
@@ -122,8 +116,6 @@ LogMessage("Player %s use medic",clientName);}
 {char clientName[32];GetClientName(client, clientName, 31);
 LogMessage("Player %s use medic",clientName);}
 #endif
-
-
 return Plugin_Handled;
 }
 //*************************	
@@ -136,8 +128,7 @@ public  Action Cure(Handle timer, int client){
 #endif
 if (HealthProcess[client][CURE]==0)return Plugin_Stop;
 if (HealthProcess[client][CURE]==4)
-	{
-	 
+	{	 
 	 //EmitSoundToClient(client,g_snd_SPRINT,SOUND_FROM_PLAYER,SNDCHAN_BODY,SNDLEVEL_NORMAL,SNDVOL_NORMAL); //CHAN_BODY
 	 HealthProcess[client][CURE]--;
 	 float angs[3];
